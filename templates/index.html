@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHUBHAMOS Expression Detector</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/index.css">
+    <style>
+        .controls {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            align-items: center;
+        }
+
+        .toggle-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            padding: 0.9rem 1.8rem;
+            border-radius: 14px;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            box-shadow: 0 8px 20px rgba(56, 189, 248, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .toggle-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(56, 189, 248, 0.4);
+        }
+
+        .toggle-btn.off {
+            background: #475569;
+            box-shadow: none;
+        }
+
+        .ai-status-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .ai-status {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ef4444;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot.active {
+            background: #10b981;
+            box-shadow: 0 0 12px #10b981;
+        }
+
+        .user-count-badge {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: var(--primary);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+
+        /* Responsive sidebar for multi-user */
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>SHUBHAMOS Expression Detector</h1>
+            <p class="subtitle">Advanced Multi-User Neural Interface</p>
+        </header>
+
+        <div class="controls">
+            <button id="ai-toggle" class="toggle-btn">
+                <span id="btn-icon">🧠</span>
+                <span id="btn-text">AI Detector: ON</span>
+            </button>
+            <div class="ai-status-container">
+                <div class="ai-status">
+                    <div id="status-dot" class="status-dot active"></div>
+                    <span id="status-text">AI Engine Online</span>
+                </div>
+                <div id="user-info" class="user-count-badge">Monitoring 0 People</div>
+            </div>
+        </div>
+
+        <main class="main-layout">
+            <div class="video-section">
+                <div class="status-badge">
+                    <div class="pulse"></div>
+                    <span>REAL-TIME ANALYSIS</span>
+                </div>
+                <div class="video-overlay"></div>
+                <img src="/video_feed" class="video-feed" alt="Camera Stream" id="video-stream">
+            </div>
+
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Primary Focus</h2>
+                </div>
+
+                <div id="emotion-container" class="emotion-bars">
+                    <!-- Emotion items will be injected here -->
+                </div>
+
+                <div id="no-face-msg" class="no-face">
+                    Awaiting Face Detection...
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const emotions = ['angry', 'disgust', 'happy', 'sad', 'surprise'];
+        const container = document.getElementById('emotion-container');
+        const aiToggle = document.getElementById('ai-toggle');
+        const btnText = document.getElementById('btn-text');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const userInfo = document.getElementById('user-info');
+
+        // Initialize bars
+        emotions.forEach(emo => {
+            const item = document.createElement('div');
+            item.className = 'emotion-item';
+            item.innerHTML = `
+                <div class="emotion-label">
+                    <span class="emotion-name" id="name-${emo}">${emo}</span>
+                    <span class="emotion-value" id="val-${emo}">0%</span>
+                </div>
+                <div class="bar-container">
+                    <div id="bar-${emo}" class="bar-fill"></div>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+
+        async function toggleAI() {
+            try {
+                const res = await fetch('/toggle_ai', { method: 'POST' });
+                const data = await res.json();
+                updateAIStates(data.active);
+            } catch (e) { console.error(e); }
+        }
+
+        function updateAIStates(active) {
+            if (active) {
+                aiToggle.classList.remove('off');
+                btnText.innerText = "AI Detector: ON";
+                statusDot.classList.add('active');
+                statusText.innerText = "AI Engine Active";
+            } else {
+                aiToggle.classList.add('off');
+                btnText.innerText = "AI Detector: OFF";
+                statusDot.classList.remove('active');
+                statusText.innerText = "AI Engine Paused";
+            }
+        }
+
+        aiToggle.onclick = toggleAI;
+
+        async function updateData() {
+            try {
+                const response = await fetch('/emotions');
+                const result = await response.json();
+
+                const detections = result.detections;
+                const aiActive = result.active;
+
+                updateAIStates(aiActive);
+                userInfo.innerText = `Monitoring ${detections ? detections.length : 0} People`;
+
+                const hasData = detections && detections.length > 0;
+                document.getElementById('no-face-msg').style.display = hasData ? 'none' : 'block';
+
+                if (hasData && aiActive) {
+                    // Focus on the first person detected as primary
+                    const primary = detections[0];
+                    const data = primary.emotions;
+                    const dominant = primary.dominant;
+
+                    emotions.forEach(emo => {
+                        const val = Math.round((data[emo] || 0) * 100);
+                        const bar = document.getElementById(`bar-${emo}`);
+                        const text = document.getElementById(`val-${emo}`);
+                        const name = document.getElementById(`name-${emo}`);
+
+                        bar.style.width = Math.max(val, 2) + '%';
+                        text.innerText = val + '%';
+
+                        if (emo === dominant && val > 15) {
+                            bar.classList.add('dominant-bar');
+                            name.classList.add('dominant');
+                            text.classList.add('dominant');
+                        } else {
+                            bar.classList.remove('dominant-bar');
+                            name.classList.remove('dominant');
+                            text.classList.remove('dominant');
+                        }
+                    });
+                } else {
+                    emotions.forEach(emo => {
+                        const b = document.getElementById(`bar-${emo}`);
+                        if (b) b.style.width = '0%';
+                        const t = document.getElementById(`val-${emo}`);
+                        if (t) t.innerText = '0%';
+                        const n = document.getElementById(`name-${emo}`);
+                        if (n) n.classList.remove('dominant');
+                    });
+                }
+            } catch (e) {
+                console.error("Link Terminated:", e);
+            }
+        }
+
+        setInterval(updateData, 120);
+    </script>
+</body>
+
+</html>
